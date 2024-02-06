@@ -1,15 +1,16 @@
 /*
- * lirc_rpi.c
+ * lirc_tegra.c
  *
- * lirc_rpi - Device driver that records pulse- and pause-lengths
+ * lirc_tegra - Device driver that records pulse- and pause-lengths
  *	      (space-lengths) (just like the lirc_serial driver does)
- *	      between GPIO interrupt events on the Raspberry Pi.
+ *	      between GPIO interrupt events on the Jetson Nano.
  *	      Lots of code has been taken from the lirc_serial module,
  *	      so I would like say thanks to the authors.
  *
  * Copyright (C) 2012,2016 Aron Robert Szabo <aron@reon.hu>,
  *		      Michael Bishop <cleverca22@gmail.com>
  *		      Bengt Martensson <barf@bengt-martensson.de>
+ *		      Trenton Ruf <truf@live.com>
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -42,9 +43,8 @@
 #include <media/lirc_dev.h>
 #include <linux/gpio.h>
 #include <linux/of_platform.h>
-#include <linux/platform_data/bcm2708.h>
 
-#define LIRC_DRIVER_NAME "lirc_rpi"
+#define LIRC_DRIVER_NAME "lirc_tegra"
 #define RBUF_LEN 256
 #define LIRC_TRANSMITTER_LATENCY 50
 
@@ -64,8 +64,8 @@
 	} while (0)
 
 /* Note: These defaults are pretty brutally overwritten by the devtree stuff. */
-#define DEFAULT_GPIO_IN_PIN 18
-#define DEFAULT_GPIO_OUT_PIN 17
+#define DEFAULT_GPIO_IN_PIN 200 //sysf 200 is pin 31
+#define DEFAULT_GPIO_OUT_PIN 38 //sysf 38 is pin 33
 
 /* module parameters */
 
@@ -95,9 +95,9 @@ static int irq_num;
 /* forward declarations */
 static long send_pulse(unsigned long length);
 static void send_space(long length);
-static void lirc_rpi_exit(void);
+static void lirc_tegra_exit(void);
 
-static struct platform_device *lirc_rpi_dev;
+static struct platform_device *lirc_tegra_dev;
 static struct timeval lasttv = { 0, 0 };
 static struct lirc_buffer rbuf;
 static spinlock_t lock;
@@ -344,6 +344,7 @@ static inline int read_bool_property(const struct device_node *np,
 	return err;
 }
 
+// TODO 
 static void read_pin_settings(struct device_node *node)
 {
 	u32 pin;
@@ -378,22 +379,21 @@ static int init_port(void)
 	int i, nlow, nhigh;
 	struct device_node *node;
 
-	node = lirc_rpi_dev->dev.of_node;
+	node = lirc_tegra_dev->dev.of_node;
 
-	gpiochip = gpiochip_find("bcm2708_gpio", is_right_chip);
+	gpiochip = gpiochip_find("tegra-gpio", is_right_chip);
 
-	/*
-	 * Because of the lack of a setpull function, only support
-	 * pinctrl-bcm2835 if using device tree.
-	*/
 	if (!gpiochip && node)
-		gpiochip = gpiochip_find("pinctrl-bcm2835", is_right_chip);
+		gpiochip = gpiochip_find("tegra-gpio", is_right_chip);
 
 	if (!gpiochip) {
 		pr_err(LIRC_DRIVER_NAME ": gpio chip not found!\n");
 		return -ENODEV;
 	}
 
+	 //TODO Figure out if this does anything other than set the internal pullups
+	 // defined in the device tree
+	/*	 
 	if (node) {
 		struct device_node *pins_node;
 
@@ -406,17 +406,18 @@ static int init_port(void)
 
 		read_pin_settings(pins_node);
 
-		of_property_read_u32(node, "rpi,sense", &sense);
+		of_property_read_u32(node, "tegra,sense", &sense);
 
-		read_bool_property(node, "rpi,softcarrier", &softcarrier);
+		read_bool_property(node, "tegra,softcarrier", &softcarrier);
 
-		read_bool_property(node, "rpi,invert", &invert);
+		read_bool_property(node, "tegra,invert", &invert);
 
-		read_bool_property(node, "rpi,debug", &debug);
+		read_bool_property(node, "tegra,debug", &debug);
 
 	} else {
 		return -EINVAL;
 	}
+	*/
 
 	for (i = 0; i < n_transmitters; i++)
 		gpiochip->set(gpiochip, gpio_out_pin[i], invert);
@@ -621,21 +622,21 @@ static struct lirc_driver driver = {
 	.owner		= THIS_MODULE,
 };
 
-static const struct of_device_id lirc_rpi_of_match[] = {
-	{ .compatible = "rpi,lirc-rpi", },
+static const struct of_device_id lirc_tegra_of_match[] = {
+	{ .compatible = "tegra,lirc-rpi", },
 	{},
 };
-MODULE_DEVICE_TABLE(of, lirc_rpi_of_match);
+MODULE_DEVICE_TABLE(of, lirc_tegra_of_match);
 
-static struct platform_driver lirc_rpi_driver = {
+static struct platform_driver lirc_tegra_driver = {
 	.driver = {
 		.name   = LIRC_DRIVER_NAME,
 		.owner  = THIS_MODULE,
-		.of_match_table = of_match_ptr(lirc_rpi_of_match),
+		.of_match_table = of_match_ptr(lirc_tegra_of_match),
 	},
 };
 
-static int __init lirc_rpi_init(void)
+static int __init lirc_tegra_init(void)
 {
 	struct device_node *node;
 	int result;
@@ -645,7 +646,7 @@ static int __init lirc_rpi_init(void)
 	if (result < 0)
 		return -ENOMEM;
 
-	result = platform_driver_register(&lirc_rpi_driver);
+	result = platform_driver_register(&lirc_tegra_driver);
 	if (result) {
 		printk(KERN_ERR LIRC_DRIVER_NAME
 		       ": lirc register returned %d\n", result);
@@ -653,22 +654,22 @@ static int __init lirc_rpi_init(void)
 	}
 
 	node = of_find_compatible_node(NULL, NULL,
-				       lirc_rpi_of_match[0].compatible);
+				       lirc_tegra_of_match[0].compatible);
 
 	if (node) {
 		/* DT-enabled */
-		lirc_rpi_dev = of_find_device_by_node(node);
-		WARN_ON(lirc_rpi_dev->dev.of_node != node);
+		lirc_tegra_dev = of_find_device_by_node(node);
+		WARN_ON(lirc_tegra_dev->dev.of_node != node);
 		of_node_put(node);
 	}
 	else {
-		lirc_rpi_dev = platform_device_alloc(LIRC_DRIVER_NAME, 0);
-		if (!lirc_rpi_dev) {
+		lirc_tegra_dev = platform_device_alloc(LIRC_DRIVER_NAME, 0);
+		if (!lirc_tegra_dev) {
 			result = -ENOMEM;
 			goto exit_driver_unregister;
 		}
 
-		result = platform_device_add(lirc_rpi_dev);
+		result = platform_device_add(lirc_tegra_dev);
 		if (result)
 			goto exit_device_put;
 	}
@@ -676,10 +677,10 @@ static int __init lirc_rpi_init(void)
 	return 0;
 
 	exit_device_put:
-	platform_device_put(lirc_rpi_dev);
+	platform_device_put(lirc_tegra_dev);
 
 	exit_driver_unregister:
-	platform_driver_unregister(&lirc_rpi_driver);
+	platform_driver_unregister(&lirc_tegra_driver);
 
 	exit_buffer_free:
 	lirc_buffer_free(&rbuf);
@@ -687,26 +688,26 @@ static int __init lirc_rpi_init(void)
 	return result;
 }
 
-static void lirc_rpi_exit(void)
+static void lirc_tegra_exit(void)
 {
-	if (!lirc_rpi_dev->dev.of_node)
-		platform_device_unregister(lirc_rpi_dev);
-	platform_driver_unregister(&lirc_rpi_driver);
+	if (!lirc_tegra_dev->dev.of_node)
+		platform_device_unregister(lirc_tegra_dev);
+	platform_driver_unregister(&lirc_tegra_driver);
 	lirc_buffer_free(&rbuf);
 }
 
-static int __init lirc_rpi_init_module(void)
+static int __init lirc_tegra_init_module(void)
 {
 	int result;
 	int i;
 
-	result = lirc_rpi_init();
+	result = lirc_tegra_init();
 	if (result)
 		return result;
 
 	result = init_port();
 	if (result < 0)
-		goto exit_rpi;
+		goto exit_tegra;
 
 	driver.features = 0;
 	if (softcarrier) {
@@ -720,14 +721,14 @@ static int __init lirc_rpi_init_module(void)
 	if (gpio_in_pin != INVALID)
 		driver.features |= LIRC_CAN_REC_MODE2;
 
-	driver.dev = &lirc_rpi_dev->dev;
+	driver.dev = &lirc_tegra_dev->dev;
 	driver.minor = lirc_register_driver(&driver);
 
 	if (driver.minor < 0) {
 		printk(KERN_ERR LIRC_DRIVER_NAME
 		       ": device registration failed with %d\n", result);
 		result = -EIO;
-		goto exit_rpi;
+		goto exit_tegra;
 	}
 
 	printk(KERN_INFO LIRC_DRIVER_NAME ": driver registered!\n");
@@ -740,13 +741,13 @@ static int __init lirc_rpi_init_module(void)
 
 	return 0;
 
-	exit_rpi:
-	lirc_rpi_exit();
+	exit_tegra:
+	lirc_tegra_exit();
 
 	return result;
 }
 
-static void __exit lirc_rpi_exit_module(void)
+static void __exit lirc_tegra_exit_module(void)
 {
 	int i;
 	lirc_unregister_driver(driver.minor);
@@ -755,21 +756,22 @@ static void __exit lirc_rpi_exit_module(void)
 		gpio_free(gpio_out_pin[i]);
 	gpio_free(gpio_in_pin);
 
-	lirc_rpi_exit();
+	lirc_tegra_exit();
 
 	printk(KERN_INFO LIRC_DRIVER_NAME ": cleaned up module\n");
 }
 
-module_init(lirc_rpi_init_module);
-module_exit(lirc_rpi_exit_module);
+module_init(lirc_tegra_init_module);
+module_exit(lirc_tegra_exit_module);
 
 #define xstringify(s) stringify(s)
 #define stringify(s) #s
 
-MODULE_DESCRIPTION("Infra-red receiver and blaster driver for Raspberry Pi GPIO.");
+MODULE_DESCRIPTION("Infra-red receiver and blaster driver for Jetson Nano GPIO.");
 MODULE_AUTHOR("Aron Robert Szabo <aron@reon.hu>");
 MODULE_AUTHOR("Michael Bishop <cleverca22@gmail.com>");
 MODULE_AUTHOR("Bengt Martensson <barf@bengt-martensson.de>");
+MODULE_AUTHOR("Trenton Ruf <truf@live.com>");
 MODULE_LICENSE("GPL");
 
 module_param_array(gpio_out_pin, int, &n_transmitters, S_IRUGO);

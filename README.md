@@ -1,4 +1,7 @@
-# lirc_rpi: GPIO-based Lirc driver for Raspberry Pi
+# lirc_tegra: GPIO-based Lirc driver for the Jetson Nano
+This is a modification of the [lirc_rpi kernel module driver](https://github.com/bengtmartensson/lirc_rpi)
+
+
 
 This code is a further development of the [Lirc driver for the
 Raspberry Pi by Aron Szabo](http://aron.ws/projects/lirc_rpi/), which
