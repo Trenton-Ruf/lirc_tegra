@@ -2,7 +2,7 @@
 
 # sudo apt-get install raspberrypi-kernel-headers
 
-obj-m+=lirc_rpi.o
+obj-m+=lirc_tegra.o
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(shell pwd) modules
