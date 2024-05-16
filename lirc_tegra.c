@@ -72,7 +72,7 @@
 /* set the default GPIO input pin */
 static int gpio_in_pin = DEFAULT_GPIO_IN_PIN;
 /* set the default pull behaviour for input pin */
-static int gpio_in_pull = BCM2708_PULL_DOWN;
+//static int gpio_in_pull = BCM2708_PULL_DOWN;
 static int gpio_out_pin[LIRC_TEGRA_MAX_TRANSMITTERS] =
 	{DEFAULT_GPIO_OUT_PIN, INVALID, INVALID, INVALID,
 	INVALID, INVALID, INVALID, INVALID};
@@ -781,10 +781,11 @@ MODULE_PARM_DESC(gpio_out_pin, "GPIO output/transmitter pins of the BCM"
 module_param(gpio_in_pin, int, S_IRUGO);
 MODULE_PARM_DESC(gpio_in_pin, "GPIO input pin number of the BCM processor."
 		 " (default " xstringify(DEFAULT_GPIO_IN_PIN) ")");
-
+/*
 module_param(gpio_in_pull, int, S_IRUGO);
 MODULE_PARM_DESC(gpio_in_pull, "GPIO input pin pull configuration."
 		 " (0 = off, 1 = up, 2 = down, default down)");
+*/
 
 module_param(sense, int, S_IRUGO);
 MODULE_PARM_DESC(sense, "Override autodetection of IR receiver circuit"
