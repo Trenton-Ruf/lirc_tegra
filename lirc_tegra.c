@@ -54,7 +54,7 @@
 #define MAX_UDELAY_US (MAX_UDELAY_MS*1000)
 #endif
 
-#define LIRC_RPI_MAX_TRANSMITTERS 8
+#define LIRC_TEGRA_MAX_TRANSMITTERS 8
 #define INVALID -1
 #define dprintk(fmt, args...)					\
 	do {							\
@@ -73,7 +73,7 @@
 static int gpio_in_pin = DEFAULT_GPIO_IN_PIN;
 /* set the default pull behaviour for input pin */
 static int gpio_in_pull = BCM2708_PULL_DOWN;
-static int gpio_out_pin[LIRC_RPI_MAX_TRANSMITTERS] =
+static int gpio_out_pin[LIRC_TEGRA_MAX_TRANSMITTERS] =
 	{DEFAULT_GPIO_OUT_PIN, INVALID, INVALID, INVALID,
 	INVALID, INVALID, INVALID, INVALID};
 /* actual number of configured transmitters */
@@ -623,7 +623,7 @@ static struct lirc_driver driver = {
 };
 
 static const struct of_device_id lirc_tegra_of_match[] = {
-	{ .compatible = "tegra,lirc-rpi", },
+	{ .compatible = "tegra,lirc-tegra", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, lirc_tegra_of_match);
