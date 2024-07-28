@@ -64,7 +64,7 @@
 	} while (0)
 
 /* Note: These defaults are pretty brutally overwritten by the devtree stuff. */
-#define DEFAULT_GPIO_IN_PIN  38 //ioctl 38 is pin 33
+#define DEFAULT_GPIO_IN_PIN  149 //ioctl 149 is pin 49
 #define DEFAULT_GPIO_OUT_PIN 200 //ioctl 200 is pin 31
 
 /* module parameters */
